@@ -33,9 +33,6 @@ dist/
 # Streamlit
 .streamlit/secrets.toml
 
-# Data exports
-data/processed/
-
 # Notebook outputs
 *.ipynb_checkpoints
 
