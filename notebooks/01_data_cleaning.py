@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import joblib
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -231,6 +232,12 @@ df.to_csv(
     '../data/processed/cleaned_risk_profiler.csv',
     index=False
 )
+
+# Export Scaler
+joblib.dump(feature_scaler, '../models/feature_scaler.joblib')
+
+# Export daftar nama kolom secara berurutan
+joblib.dump(X_train.columns.tolist(), '../models/features_list.joblib')
 
 # =========================================================
 # FINAL INFO
