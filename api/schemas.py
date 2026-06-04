@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 class RiskInput(BaseModel):
@@ -10,3 +12,10 @@ class RiskInput(BaseModel):
     pdam_bill_avg: float
     pdam_late_payments: int
     business_category: str
+
+
+class DecisionInput(BaseModel):
+    merchant_id: str
+    status: Literal["Approved", "Rejected", "Revision Requested"]
+    note: str | None = None
+    revision_limit: float | None = None
