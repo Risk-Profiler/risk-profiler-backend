@@ -3,6 +3,11 @@ from api.ml_explainability import score_impact_factor
 from api.ml_helpers import clamp, round_to
 from api.ml_scoring import expected_risk_from_probabilities
 from api.schemas import RiskInput
+from api.ml_constants import (
+    SHARIAH_NISBAH_CONFIG,
+    SHARIAH_MURABAHAH_MARKUP,
+    DATA_FOOTPRINT_WEIGHTS
+)
 
 
 def peer_distance(row, score, data: RiskInput, category):
@@ -73,15 +78,54 @@ def calculate_recommended_limit(data: RiskInput, category, score, probabilities,
     }
 
 
+def calculate_data_quality_score(data: RiskInput):
+    score = 0.0
+    if data.qris_volume_monthly is not None and data.qris_volume_monthly > 0 and data.qris_active_days is not None:
+        score += DATA_FOOTPRINT_WEIGHTS.get("qris", 0.40)
+    if data.pln_delay_days is not None:
+        score += DATA_FOOTPRINT_WEIGHTS.get("pln", 0.30)
+    if data.pdam_bill_avg is not None and data.pdam_late_payments is not None:
+        score += DATA_FOOTPRINT_WEIGHTS.get("pdam", 0.20)
+    if data.ecommerce_rating is not None and data.ecommerce_rating > 0:
+        score += DATA_FOOTPRINT_WEIGHTS.get("ecommerce", 0.10)
+    return round(score * 100)
+
+
+def calculate_shariah_nisbah(risk_level, score):
+    config = SHARIAH_NISBAH_CONFIG.get(risk_level, {"min": 0.50, "max": 0.70})
+    if risk_level == "Low Risk":
+        norm = clamp(score / 35.0, 0.0, 1.0)
+    elif risk_level == "Medium Risk":
+        norm = clamp((score - 35) / 40.0, 0.0, 1.0)
+    else:
+        norm = clamp((score - 75) / 25.0, 0.0, 1.0)
+    
+    merchant_share = config["max"] - (config["max"] - config["min"]) * norm
+    financier_share = 1.0 - merchant_share
+    return merchant_share, financier_share
+
+
+def calculate_shariah_murabahah(risk_level, recommended_limit):
+    markup_rate = SHARIAH_MURABAHAH_MARKUP.get(risk_level, 0.10)
+    markup_amount = recommended_limit * markup_rate
+    selling_price = recommended_limit + markup_amount
+    return markup_rate, markup_amount, selling_price
+
+
 def generate_merchant_explanation(merchant_id, risk_level, probability, drivers):
-    joined_drivers = "; ".join(
-        f"{driver['label']}={driver['value']}"
-        for driver in drivers[:4]
-    )
+    positive = [d['label'] for d in drivers if d['role'] == 'supporting']
+    negative = [d['label'] for d in drivers if d['role'] == 'balancing']
+    
+    pos_str = ", ".join(positive[:2]) if positive else "tidak ada faktor pendorong risiko signifikan"
+    neg_str = ", ".join(negative[:2]) if negative else "tidak ada faktor penyeimbang signifikan"
+
+    # Translate risk level
+    risk_indo = "Risiko Rendah" if risk_level == "Low Risk" else "Risiko Sedang" if risk_level == "Medium Risk" else "Risiko Tinggi"
+
     return (
-        f"Model memprediksi merchant {merchant_id} sebagai {risk_level} "
-        f"dengan tingkat keyakinan {probability:.4f}. "
-        f"Faktor model terbesar untuk prediksi ini: {joined_drivers}."
+        f"Analisis kredit alternatif untuk merchant {merchant_id}: model memprediksi profil {risk_indo} "
+        f"dengan keyakinan {probability:.1%}. Pendorong utama risiko usaha adalah {pos_str}, "
+        f"sementara faktor mitigasi yang membantu menyeimbangkan risiko adalah {neg_str}."
     )
 
 
@@ -125,6 +169,7 @@ def build_recommendations(
     drivers,
     percentile,
     peer_comparison_used,
+    dqs,
 ):
     factor_summary = ", ".join(
         f"{driver['label']} ({driver['value']})"
@@ -135,9 +180,89 @@ def build_recommendations(
         if peer_comparison_used
         else "berdasarkan skor, kapasitas transaksi, dan faktor risiko merchant"
     )
-    return [
+    
+    # Base recommendations
+    recs = [
         f"Prediksi model: {risk_level} dengan tingkat keyakinan {probability:.4f}.",
         f"Skor model: {score}/100, Band {band}, posisi {round(percentile * 100)}% terhadap data kalibrasi.",
         f"Faktor utama model: {factor_summary}.",
         f"Plafon rekomendasi {limit_basis}: Rp {limit:,.0f}.",
     ]
+
+    # Calculate and append Shariah recommendations
+    m_share, f_share = calculate_shariah_nisbah(risk_level, score)
+    markup_rate, markup_amount, selling_price = calculate_shariah_murabahah(risk_level, limit)
+
+    recs.append(f"Rekomendasi Nisbah Mudharabah: Merchant {m_share:.0%}, Financier {f_share:.0%}.")
+    recs.append(
+        f"Rekomendasi Plafon Murabahah (Asset Buying Limit): Rp {limit:,.0f} dengan estimasi margin/markup {markup_rate:.0%} (Rp {markup_amount:,.0f}), total harga jual Rp {selling_price:,.0f}."
+    )
+
+    # Low data footprint warning
+    if dqs < 60:
+        recs.append(f"PERINGATAN: Kualitas data alternatif rendah ({dqs}%). Rekomendasi kepercayaan diturunkan menjadi 'Perlu Review'. Mohon verifikasi dokumen manual.")
+
+    return recs
+
+
+def build_split_recommendations(
+    risk_level,
+    band,
+    score,
+    limit,
+    probability,
+    drivers,
+    percentile,
+    peer_comparison_used,
+    dqs,
+):
+    factor_summary = ", ".join(
+        f"{driver['label']} ({driver['value']})"
+        for driver in drivers[:3]
+    )
+    limit_basis = (
+        "dari profil pembanding serupa"
+        if peer_comparison_used
+        else "berdasarkan skor, kapasitas transaksi, dan faktor risiko merchant"
+    )
+    
+    # Common factors
+    common = [
+        f"Prediksi model: {risk_level} dengan tingkat keyakinan {probability:.4f}.",
+        f"Skor model: {score}/100, Band {band}, posisi {round(percentile * 100)}% terhadap data kalibrasi.",
+        f"Faktor utama model: {factor_summary}."
+    ]
+    
+    # Conventional recommendations
+    conv = [
+        f"Plafon rekomendasi {limit_basis}: Rp {limit:,.0f}."
+    ]
+    
+    # Shariah recommendations
+    m_share, f_share = calculate_shariah_nisbah(risk_level, score)
+    markup_rate, markup_amount, selling_price = calculate_shariah_murabahah(risk_level, limit)
+    
+    shar = [
+        f"Rekomendasi Nisbah Mudharabah: Merchant {m_share:.0%}, Financier {f_share:.0%}.",
+        f"Rekomendasi Plafon Murabahah (Asset Buying Limit): Rp {limit:,.0f} dengan estimasi margin/markup {markup_rate:.0%} (Rp {markup_amount:,.0f}), total harga jual Rp {selling_price:,.0f}."
+    ]
+    
+    # Warnings
+    warnings = []
+    if dqs < 60:
+        warnings.append(f"PERINGATAN: Kualitas data alternatif rendah ({dqs}%). Rekomendasi kepercayaan diturunkan menjadi 'Perlu Review'. Mohon verifikasi dokumen manual.")
+        
+    return {
+        "common": common,
+        "conventional": conv,
+        "shariah": shar,
+        "warnings": warnings,
+        "shariah_metrics": {
+            "nisbah_merchant": round(float(m_share), 4),
+            "nisbah_financier": round(float(f_share), 4),
+            "murabahah_limit": float(limit),
+            "murabahah_markup_rate": round(float(markup_rate), 4),
+            "murabahah_markup_amount": float(markup_amount),
+            "murabahah_selling_price": float(selling_price)
+        }
+    }

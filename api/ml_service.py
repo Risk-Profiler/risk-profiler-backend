@@ -13,6 +13,8 @@ from api.ml_recommendations import (
     build_recommendations,
     calculate_recommended_limit,
     generate_merchant_explanation,
+    calculate_data_quality_score,
+    build_split_recommendations,
 )
 from api.ml_scoring import calculate_confidence, calculate_score, class_probabilities
 from api.schemas import RiskInput
@@ -47,13 +49,35 @@ def predict_risk(data: RiskInput):
         shap_drivers,
     )
 
+    # Compute Data Quality Score (DQS) based on alternative data footprints
+    dqs = calculate_data_quality_score(data)
+
+    # Calculate Confidence, defaulting to "Perlu Review" if data footprint is poor
+    confidence = calculate_confidence(probability)
+    if dqs < 60:
+        confidence = "Perlu Review"
+
+    # Compute split recommendations for Conventional / Shariah toggle support
+    split_recs = build_split_recommendations(
+        risk_level,
+        band,
+        score,
+        recommended_limit,
+        probability,
+        shap_drivers,
+        percentile,
+        peer_comparison_used,
+        dqs,
+    )
+
     return {
         "risk_level": risk_level,
         "score": score,
         "score_percentile": round(percentile, 4),
         "probability": round(probability, 4),
         "class_probabilities": class_probabilities(probabilities),
-        "confidence": calculate_confidence(probability),
+        "confidence": confidence,
+        "data_quality_score": dqs,
         "band": band,
         "band_range": band_range,
         "recommended_limit": recommended_limit,
@@ -73,6 +97,10 @@ def predict_risk(data: RiskInput):
             shap_drivers,
             percentile,
             peer_comparison_used,
+            dqs,
         ),
+        "conventional_recommendations": split_recs["common"] + split_recs["conventional"] + split_recs["warnings"],
+        "shariah_recommendations": split_recs["common"] + split_recs["shariah"] + split_recs["warnings"],
+        "shariah_metrics": split_recs["shariah_metrics"],
         "model_features": raw_df.iloc[0].to_dict(),
     }

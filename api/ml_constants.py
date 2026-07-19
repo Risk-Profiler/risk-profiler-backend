@@ -79,3 +79,30 @@ FEATURE_GROUPS = {
         "business_category_nan",
     },
 }
+
+# =========================================================
+# SHARIAH FINANCING & DATA QUALITY CONSTANTS
+# =========================================================
+
+# Nisbah (profit share) percentage limits for the Merchant based on Risk Level
+SHARIAH_NISBAH_CONFIG = {
+    "Low Risk": {"min": 0.70, "max": 0.90},
+    "Medium Risk": {"min": 0.50, "max": 0.70},
+    "High Risk": {"min": 0.30, "max": 0.50},
+}
+
+# Murabahah markup ceiling based on Risk Level
+SHARIAH_MURABAHAH_MARKUP = {
+    "Low Risk": 0.05,      # 5% markup
+    "Medium Risk": 0.10,   # 10% markup
+    "High Risk": 0.15,     # 15% markup
+}
+
+# Weights for computing the alternative data footprint completeness (Total = 1.0)
+DATA_FOOTPRINT_WEIGHTS = {
+    "qris": 0.40,        # Transaction volume & days active
+    "pln": 0.30,         # PLN payment reliability
+    "pdam": 0.20,        # PDAM payment average & delay
+    "ecommerce": 0.10,   # E-commerce platform ratings
+}
+

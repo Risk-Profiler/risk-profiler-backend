@@ -39,3 +39,9 @@ dist/
 # Coverage
 .coverage
 htmlcov/
+
+# MLOps & Local Runtime
+mlflow.db
+mlruns/
+implementation_plan.md
+smoke_test.py
