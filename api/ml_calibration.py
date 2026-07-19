@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from api.ml_artifacts import BASE_DIR, expected_features, feature_scaler, pipeline
@@ -33,6 +34,8 @@ def build_training_calibration():
     if cleaned_path.exists():
         raw = pd.read_csv(cleaned_path)
         model_frame = raw[expected_features].copy()
+        model_frame["qris_volume_monthly"] = np.log1p(model_frame["qris_volume_monthly"])
+        model_frame["pdam_bill_avg"] = np.log1p(model_frame["pdam_bill_avg"])
         model_frame[NUMERIC_FEATURES] = feature_scaler.transform(model_frame[NUMERIC_FEATURES])
         peer_probabilities = pipeline.predict_proba(model_frame)
         peer_profiles = raw.copy()

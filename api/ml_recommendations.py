@@ -87,11 +87,31 @@ def generate_merchant_explanation(merchant_id, risk_level, probability, drivers)
 
 def build_data_sources(data: RiskInput):
     return [
-        {"id": 1, "label": f"QRIS - {data.qris_active_days} hari aktif", "available": data.qris_volume_monthly > 0},
-        {"id": 2, "label": f"Utilitas PLN - telat {data.pln_delay_days} hari", "available": data.pln_delay_days >= 0},
-        {"id": 3, "label": f"E-Commerce - rating {data.ecommerce_rating:.1f}", "available": data.ecommerce_rating > 0},
-        {"id": 4, "label": f"Profil usaha - {data.business_age_months} bulan", "available": data.business_age_months > 0},
-        {"id": 5, "label": f"PDAM - {data.pdam_late_payments} kali telat", "available": data.pdam_bill_avg >= 0},
+        {
+            "id": 1, 
+            "label": f"QRIS - {data.qris_active_days} hari aktif" if data.qris_active_days is not None else "QRIS - Tidak ada data", 
+            "available": data.qris_volume_monthly is not None and data.qris_volume_monthly > 0
+        },
+        {
+            "id": 2, 
+            "label": f"Utilitas PLN - telat {data.pln_delay_days} hari" if data.pln_delay_days is not None else "Utilitas PLN - Tidak ada data", 
+            "available": data.pln_delay_days is not None
+        },
+        {
+            "id": 3, 
+            "label": f"E-Commerce - rating {data.ecommerce_rating:.1f}" if data.ecommerce_rating is not None else "E-Commerce - Tidak ada data", 
+            "available": data.ecommerce_rating is not None and data.ecommerce_rating > 0
+        },
+        {
+            "id": 4, 
+            "label": f"Profil usaha - {data.business_age_months} bulan" if data.business_age_months is not None else "Profil usaha - Tidak ada data", 
+            "available": data.business_age_months is not None and data.business_age_months > 0
+        },
+        {
+            "id": 5, 
+            "label": f"PDAM - {data.pdam_late_payments} kali telat" if data.pdam_late_payments is not None else "PDAM - Tidak ada data", 
+            "available": data.pdam_bill_avg is not None and data.pdam_bill_avg >= 0
+        },
         {"id": 6, "label": "SLIK / data bank eksternal", "available": False},
     ]
 

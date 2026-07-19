@@ -18,7 +18,7 @@ NUMERIC_FEATURES = [
     "pln_delay_days",
     "pdam_bill_avg",
     "pdam_late_payments",
-    "volume_per_active_day",
+    "qris_active_ratio",
     "volume_to_age_ratio",
     "pln_delay_ratio",
 ]
@@ -31,7 +31,7 @@ FEATURE_LABELS = {
     "pln_delay_days": "Keterlambatan PLN",
     "pdam_bill_avg": "Rata-rata Tagihan PDAM",
     "pdam_late_payments": "Keterlambatan PDAM",
-    "volume_per_active_day": "Volume QRIS per Hari Aktif",
+    "qris_active_ratio": "Rasio Hari Aktif QRIS",
     "volume_to_age_ratio": "Rasio Volume terhadap Usia Usaha",
     "pln_delay_ratio": "Rasio Telat PLN terhadap Usia Usaha",
     "chronic_pln_delay": "Indikasi Keterlambatan PLN Kronis",
@@ -39,13 +39,18 @@ FEATURE_LABELS = {
     "business_category_fnb": "Kategori F&B",
     "business_category_jasa": "Kategori Jasa",
     "business_category_retail": "Kategori Retail",
+    "pln_delay_days_isna": "Data PLN Kosong",
+    "ecommerce_rating_isna": "Data Rating E-Commerce Kosong",
+    "pdam_bill_avg_isna": "Data PDAM Kosong",
+    "pdam_late_payments_isna": "Data Keterlambatan PDAM Kosong",
+    "has_both_utilities": "Memiliki Kedua Utilitas",
 }
 
 FEATURE_GROUPS = {
     "Stabilitas Arus Kas": {
         "qris_volume_monthly",
         "qris_active_days",
-        "volume_per_active_day",
+        "qris_active_ratio",
         "volume_to_age_ratio",
     },
     "Kedisiplinan Utilitas": {
@@ -54,6 +59,10 @@ FEATURE_GROUPS = {
         "chronic_pln_delay",
         "pdam_bill_avg",
         "pdam_late_payments",
+        "pln_delay_days_isna",
+        "pdam_bill_avg_isna",
+        "pdam_late_payments_isna",
+        "has_both_utilities",
     },
     "Kredibilitas Digital": {
         "ecommerce_rating",

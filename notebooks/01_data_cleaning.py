@@ -42,6 +42,11 @@ print(df.info())
 # Missing Values
 # -------------------------
 
+df['pln_delay_days_isna'] = (
+    df['pln_delay_days']
+    .isna()
+    .astype(int)
+)
 df['pln_delay_days'] = df['pln_delay_days'].fillna(0)
 
 df['ecommerce_rating_isna'] = (
@@ -50,13 +55,26 @@ df['ecommerce_rating_isna'] = (
     .astype(int)
 )
 
+ecommerce_rating_median = df['ecommerce_rating'].median()
+joblib.dump({"ecommerce_rating_median": float(ecommerce_rating_median)}, '../models/cleaning_constants.joblib')
+
 df['ecommerce_rating'] = (
     df['ecommerce_rating']
-    .fillna(df['ecommerce_rating'].median())
+    .fillna(ecommerce_rating_median)
 )
 
+df['pdam_bill_avg_isna'] = (
+    df['pdam_bill_avg']
+    .isna()
+    .astype(int)
+)
 df['pdam_bill_avg'] = df['pdam_bill_avg'].fillna(0)
 
+df['pdam_late_payments_isna'] = (
+    df['pdam_late_payments']
+    .isna()
+    .astype(int)
+)
 df['pdam_late_payments'] = (
     df['pdam_late_payments']
     .fillna(0)
@@ -181,6 +199,13 @@ X_train, X_test, y_train, y_test = train_test_split(
 # AFTER SPLIT
 # =========================================================
 
+# Apply log transform to highly right-skewed cash flow columns prior to scaling
+X_train['qris_volume_monthly'] = np.log1p(X_train['qris_volume_monthly'])
+X_train['pdam_bill_avg'] = np.log1p(X_train['pdam_bill_avg'])
+
+X_test['qris_volume_monthly'] = np.log1p(X_test['qris_volume_monthly'])
+X_test['pdam_bill_avg'] = np.log1p(X_test['pdam_bill_avg'])
+
 numeric_features = [
     'business_age_months',
     'qris_volume_monthly',
@@ -189,7 +214,7 @@ numeric_features = [
     'pln_delay_days',   
     'pdam_bill_avg',
     'pdam_late_payments',
-    'volume_per_active_day',
+    'qris_active_ratio',
     'volume_to_age_ratio',
     'pln_delay_ratio'
 ]

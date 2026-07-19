@@ -115,7 +115,7 @@ gap = abs(cv_scores.mean() - f1)
 print(f"\nCV F1 Mean : {cv_scores.mean():.3f}")
 print(f"Test F1    : {f1:.3f}")
 print(f"Gap        : {gap:.3f}", end=" ")
-print("✅ Konsisten" if gap <= 0.05 else "⚠️  Ada gap — perlu dicek")
+print("Konsisten" if gap <= 0.05 else "Ada gap - perlu dicek")
 
 # =========================================================
 # SAVE MODEL
