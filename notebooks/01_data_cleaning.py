@@ -11,7 +11,8 @@ from sklearn.preprocessing import MinMaxScaler
 # =========================================================
 # IMPORT FEATURE ENGINEERING MODULE
 # =========================================================
-module_path = Path("../notebooks/02_feature_engineering.py")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+module_path = PROJECT_ROOT / "notebooks/02_feature_engineering.py"
 
 spec = importlib.util.spec_from_file_location(
     "feature_module",
@@ -27,7 +28,7 @@ add_featured_engineering = feature_module.add_featured_engineering
 # LOAD DATA
 # =========================================================
 
-df = pd.read_csv('../data/raw/messy_risk_profiler.csv')
+df = pd.read_csv(PROJECT_ROOT / 'data/raw/messy_risk_profiler.csv')
 
 print("=== RAW DATA INFO ===")
 print(df.info())
@@ -56,7 +57,7 @@ df['ecommerce_rating_isna'] = (
 )
 
 ecommerce_rating_median = df['ecommerce_rating'].median()
-joblib.dump({"ecommerce_rating_median": float(ecommerce_rating_median)}, '../models/cleaning_constants.joblib')
+joblib.dump({"ecommerce_rating_median": float(ecommerce_rating_median)}, PROJECT_ROOT / 'models/cleaning_constants.joblib')
 
 df['ecommerce_rating'] = (
     df['ecommerce_rating']
@@ -234,35 +235,35 @@ X_test[numeric_features] = feature_scaler.transform(
 # =========================================================
 
 X_train.to_csv(
-    '../data/processed/X_train.csv',
+    PROJECT_ROOT / 'data/processed/X_train.csv',
     index=False
 )
 
 X_test.to_csv(
-    '../data/processed/X_test.csv',
+    PROJECT_ROOT / 'data/processed/X_test.csv',
     index=False
 )
 
 y_train.to_csv(
-    '../data/processed/y_train.csv',
+    PROJECT_ROOT / 'data/processed/y_train.csv',
     index=False
 )
 
 y_test.to_csv(
-    '../data/processed/y_test.csv',
+    PROJECT_ROOT / 'data/processed/y_test.csv',
     index=False
 )
 
 df.to_csv(
-    '../data/processed/cleaned_risk_profiler.csv',
+    PROJECT_ROOT / 'data/processed/cleaned_risk_profiler.csv',
     index=False
 )
 
 # Export Scaler
-joblib.dump(feature_scaler, '../models/feature_scaler.joblib')
+joblib.dump(feature_scaler, PROJECT_ROOT / 'models/feature_scaler.joblib')
 
 # Export daftar nama kolom secara berurutan
-joblib.dump(X_train.columns.tolist(), '../models/features_list.joblib')
+joblib.dump(X_train.columns.tolist(), PROJECT_ROOT / 'models/features_list.joblib')
 
 # =========================================================
 # FINAL INFO

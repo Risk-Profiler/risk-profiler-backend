@@ -18,14 +18,17 @@ from sklearn.model_selection import cross_val_score, StratifiedKFold
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
 
+from pathlib import Path
+
 # =========================================================
 # LOAD DATA
 # =========================================================
 
-X_train = pd.read_csv('../data/processed/X_train.csv')
-y_train = pd.read_csv('../data/processed/y_train.csv').values.ravel()
-X_test  = pd.read_csv('../data/processed/X_test.csv')
-y_test  = pd.read_csv('../data/processed/y_test.csv').values.ravel()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+X_train = pd.read_csv(PROJECT_ROOT / 'data/processed/X_train.csv')
+y_train = pd.read_csv(PROJECT_ROOT / 'data/processed/y_train.csv').values.ravel()
+X_test  = pd.read_csv(PROJECT_ROOT / 'data/processed/X_test.csv')
+y_test  = pd.read_csv(PROJECT_ROOT / 'data/processed/y_test.csv').values.ravel()
 
 print(f"X_train shape : {X_train.shape}")
 print(f"X_test shape  : {X_test.shape}")
@@ -123,8 +126,8 @@ print("Konsisten" if gap <= 0.05 else "Ada gap - perlu dicek")
 # Saat inference, pipeline akan otomatis handle preprocessing
 # =========================================================
 
-joblib.dump(pipeline, '../models/random_forest_model.joblib')
-print("\nPipeline disimpan ke ../models/random_forest_model.joblib")
+joblib.dump(pipeline, PROJECT_ROOT / 'models/random_forest_model.joblib')
+print(f"\nPipeline disimpan ke {PROJECT_ROOT / 'models/random_forest_model.joblib'}")
 
 # =========================================================
 # SHAP ANALYSIS

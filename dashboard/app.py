@@ -1,5 +1,7 @@
 import pandas as pd
+from pathlib import Path
 
-df = pd.read_csv('../data/raw/messy_risk_profiler.csv')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+df = pd.read_csv(PROJECT_ROOT / 'data/raw/messy_risk_profiler.csv')
 
 df.info()
