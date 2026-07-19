@@ -18,6 +18,7 @@ from api.ml_recommendations import (
 )
 from api.ml_scoring import calculate_confidence, calculate_score, class_probabilities
 from api.schemas import RiskInput
+from api.ml_fraud import evaluate_fraud_rules
 
 
 def predict_risk(data: RiskInput):
@@ -57,6 +58,16 @@ def predict_risk(data: RiskInput):
     if dqs < 60:
         confidence = "Perlu Review"
 
+    # Probability of Default (High Risk, Class 2)
+    pd = float(probabilities[2])
+
+    # Fraud evaluation
+    fraud_analysis = evaluate_fraud_rules(data)
+    if fraud_analysis["is_suspicious"]:
+        confidence = "Rejected - Fraud Suspicion"
+        risk_level = "High Risk"
+        recommended_limit = 0
+
     # Compute split recommendations for Conventional / Shariah toggle support
     split_recs = build_split_recommendations(
         risk_level,
@@ -68,6 +79,8 @@ def predict_risk(data: RiskInput):
         percentile,
         peer_comparison_used,
         dqs,
+        pd,
+        fraud_analysis["flags"],
     )
 
     return {
@@ -88,6 +101,7 @@ def predict_risk(data: RiskInput):
         "contributions": build_contributions(factors, prediction),
         "breakdown": build_breakdown(factors, prediction),
         "data_sources": build_data_sources(data),
+        "fraud_analysis": fraud_analysis,
         "recommendations": build_recommendations(
             risk_level,
             band,
@@ -98,6 +112,8 @@ def predict_risk(data: RiskInput):
             percentile,
             peer_comparison_used,
             dqs,
+            pd,
+            fraud_analysis["flags"],
         ),
         "conventional_recommendations": split_recs["common"] + split_recs["conventional"] + split_recs["warnings"],
         "shariah_recommendations": split_recs["common"] + split_recs["shariah"] + split_recs["warnings"],

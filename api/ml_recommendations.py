@@ -91,15 +91,9 @@ def calculate_data_quality_score(data: RiskInput):
     return round(score * 100)
 
 
-def calculate_shariah_nisbah(risk_level, score):
+def calculate_shariah_nisbah(risk_level, pd):
     config = SHARIAH_NISBAH_CONFIG.get(risk_level, {"min": 0.50, "max": 0.70})
-    if risk_level == "Low Risk":
-        norm = clamp(score / 35.0, 0.0, 1.0)
-    elif risk_level == "Medium Risk":
-        norm = clamp((score - 35) / 40.0, 0.0, 1.0)
-    else:
-        norm = clamp((score - 75) / 25.0, 0.0, 1.0)
-    
+    norm = clamp(pd / 0.35, 0.0, 1.0)
     merchant_share = config["max"] - (config["max"] - config["min"]) * norm
     financier_share = 1.0 - merchant_share
     return merchant_share, financier_share
@@ -170,6 +164,8 @@ def build_recommendations(
     percentile,
     peer_comparison_used,
     dqs,
+    pd,
+    fraud_flags=None,
 ):
     factor_summary = ", ".join(
         f"{driver['label']} ({driver['value']})"
@@ -189,8 +185,16 @@ def build_recommendations(
         f"Plafon rekomendasi {limit_basis}: Rp {limit:,.0f}.",
     ]
 
+    # Qardhul Hasan for Band E
+    if band == "E":
+        recs.append("Rekomendasi Akad: Qardhul Hasan. Mengingat profil risiko merchant berada di Band E (Risiko Sangat Tinggi), direkomendasikan penyaluran pembiayaan kebajikan (tanpa margin) yang bersumber dari dana Zakat/Infaq untuk mendukung inklusi keuangan.")
+
+    # Expected Loss Calculator
+    expected_loss = limit * pd * 0.45
+    recs.append(f"Estimasi Expected Loss (EL): Rp {expected_loss:,.0f} (PD: {pd:.2%}, LGD: 45%).")
+
     # Calculate and append Shariah recommendations
-    m_share, f_share = calculate_shariah_nisbah(risk_level, score)
+    m_share, f_share = calculate_shariah_nisbah(risk_level, pd)
     markup_rate, markup_amount, selling_price = calculate_shariah_murabahah(risk_level, limit)
 
     recs.append(f"Rekomendasi Nisbah Mudharabah: Merchant {m_share:.0%}, Financier {f_share:.0%}.")
@@ -201,6 +205,10 @@ def build_recommendations(
     # Low data footprint warning
     if dqs < 60:
         recs.append(f"PERINGATAN: Kualitas data alternatif rendah ({dqs}%). Rekomendasi kepercayaan diturunkan menjadi 'Perlu Review'. Mohon verifikasi dokumen manual.")
+        
+    if fraud_flags:
+        for flag in fraud_flags:
+            recs.append(f"PERINGATAN FRAUD/AML: {flag}. Plafon diturunkan menjadi 0.")
 
     return recs
 
@@ -215,6 +223,8 @@ def build_split_recommendations(
     percentile,
     peer_comparison_used,
     dqs,
+    pd,
+    fraud_flags=None,
 ):
     factor_summary = ", ".join(
         f"{driver['label']} ({driver['value']})"
@@ -226,11 +236,15 @@ def build_split_recommendations(
         else "berdasarkan skor, kapasitas transaksi, dan faktor risiko merchant"
     )
     
+    # Expected Loss Calculator
+    expected_loss = limit * pd * 0.45
+
     # Common factors
     common = [
         f"Prediksi model: {risk_level} dengan tingkat keyakinan {probability:.4f}.",
         f"Skor model: {score}/100, Band {band}, posisi {round(percentile * 100)}% terhadap data kalibrasi.",
-        f"Faktor utama model: {factor_summary}."
+        f"Faktor utama model: {factor_summary}.",
+        f"Estimasi Expected Loss (EL): Rp {expected_loss:,.0f} (PD: {pd:.2%}, LGD: 45%)."
     ]
     
     # Conventional recommendations
@@ -239,18 +253,26 @@ def build_split_recommendations(
     ]
     
     # Shariah recommendations
-    m_share, f_share = calculate_shariah_nisbah(risk_level, score)
+    m_share, f_share = calculate_shariah_nisbah(risk_level, pd)
     markup_rate, markup_amount, selling_price = calculate_shariah_murabahah(risk_level, limit)
     
-    shar = [
+    shar = []
+    if band == "E":
+        shar.append("Rekomendasi Akad: Qardhul Hasan. Mengingat profil risiko merchant berada di Band E (Risiko Sangat Tinggi), direkomendasikan penyaluran pembiayaan kebajikan (tanpa margin) yang bersumber dari dana Zakat/Infaq untuk mendukung inklusi keuangan.")
+        
+    shar.extend([
         f"Rekomendasi Nisbah Mudharabah: Merchant {m_share:.0%}, Financier {f_share:.0%}.",
         f"Rekomendasi Plafon Murabahah (Asset Buying Limit): Rp {limit:,.0f} dengan estimasi margin/markup {markup_rate:.0%} (Rp {markup_amount:,.0f}), total harga jual Rp {selling_price:,.0f}."
-    ]
+    ])
     
     # Warnings
     warnings = []
     if dqs < 60:
         warnings.append(f"PERINGATAN: Kualitas data alternatif rendah ({dqs}%). Rekomendasi kepercayaan diturunkan menjadi 'Perlu Review'. Mohon verifikasi dokumen manual.")
+        
+    if fraud_flags:
+        for flag in fraud_flags:
+            warnings.append(f"PERINGATAN FRAUD/AML: {flag}. Plafon diturunkan menjadi 0.")
         
     return {
         "common": common,

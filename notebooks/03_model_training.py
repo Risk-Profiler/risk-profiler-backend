@@ -80,10 +80,12 @@ rf_param_grid = {
 # - qris_volume_monthly: -1 (higher volume, lower risk)
 # - pln_delay_days: 1 (higher delay, higher risk)
 # - pdam_late_payments: 1 (higher late payments, higher risk)
+# - ecommerce_rating: -1 (higher rating, lower risk)
 monotone_constraints = {
     'qris_volume_monthly': -1,
     'pln_delay_days': 1,
-    'pdam_late_payments': 1
+    'pdam_late_payments': 1,
+    'ecommerce_rating': -1
 }
 
 xgb_pipeline = Pipeline([
